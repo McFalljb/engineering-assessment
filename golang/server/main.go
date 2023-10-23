@@ -53,7 +53,9 @@ func main() {
 		Handler: r,
 	}
 
-	server.ListenAndServe()
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("error starting server: %s", err)
+	}
 }
 
 func killSwitch(c *gin.Context) {
