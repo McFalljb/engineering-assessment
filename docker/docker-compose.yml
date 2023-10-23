@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  foodtruck:
+    build:
+      dockerfile: golang/server/Dockerfile
+      context: ../
+    container_name: ${BACKEND_HOST}
+    # image: api-server:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "${BACKEND_PORT}:8080"
+    environment:
+      - BACKEND_PORT
+      - POSTGRES_CONNECTION_STRING=host=${POSTGRES_HOST} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB} port=${POSTGRES_PORT} sslmode=disable TimeZone=EST
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    container_name: db
+    environment:
+      - TABLE_NAME
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_PORT
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c \"\\dt\" | grep ${TABLE_NAME}"]
+      # test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    image: postgres:15.1-alpine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    ports:
+      - "5432:5432"
+    restart: on-failure
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./Mobile_Food_Facility_Permit.csv:/tmp/Mobile_Food_Facility_Permit.csv
+      - ./init_template.sql:/tmp/init_template.sql
